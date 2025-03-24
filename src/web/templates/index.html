@@ -32,22 +32,92 @@
 <div class="example-questions">
     <h3>Example Questions</h3>
     <div class="question-grid">
-        <div class="question-card">
+        <div class="question-card" onclick="setQuery(this)">
             <div class="question-icon">👥</div>
             <p>How can I mobilize volunteers for my GivingTuesday campaign?</p>
         </div>
-        <div class="question-card">
+        <div class="question-card" onclick="setQuery(this)">
             <div class="question-icon">📣</div>
             <p>What storytelling techniques work best for GivingTuesday?</p>
         </div>
-        <div class="question-card">
+        <div class="question-card" onclick="setQuery(this)">
             <div class="question-icon">📊</div>
             <p>How can I measure the success of my GivingTuesday campaign?</p>
         </div>
-        <div class="question-card">
+        <div class="question-card" onclick="setQuery(this)">
             <div class="question-icon">🏢</div>
             <p>What's the best way to engage local businesses in my campaign?</p>
         </div>
     </div>
+    
+    <script>
+        function setQuery(card) {
+            // Get the text from the card
+            const queryText = card.querySelector('p').textContent;
+            
+            // Set the text in the textarea
+            document.getElementById('query').value = queryText;
+            
+            // Determine if we should auto-submit based on a URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const autoSubmit = urlParams.get('autoSubmit') === 'true';
+            
+            if (autoSubmit) {
+                // Automatically submit the form
+                document.querySelector('form').submit();
+            } else {
+                // Otherwise, just scroll to the form and focus the textarea
+                document.getElementById('query').scrollIntoView({ behavior: 'smooth' });
+                document.getElementById('query').focus();
+            }
+        }
+        
+        // Add a toggle for auto-submit option
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create a checkbox for auto-submit
+            const checkboxContainer = document.createElement('div');
+            checkboxContainer.className = 'form-group checkbox-group';
+            checkboxContainer.style.marginTop = '15px';
+            
+            const label = document.createElement('label');
+            label.style.fontSize = '0.9rem';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = 'auto_submit';
+            checkbox.checked = localStorage.getItem('autoSubmit') === 'true';
+            
+            // Update URL and localStorage when checkbox changes
+            checkbox.addEventListener('change', function() {
+                const autoSubmit = this.checked;
+                localStorage.setItem('autoSubmit', autoSubmit);
+                
+                // Update URL parameter without page reload
+                const url = new URL(window.location);
+                if (autoSubmit) {
+                    url.searchParams.set('autoSubmit', 'true');
+                } else {
+                    url.searchParams.delete('autoSubmit');
+                }
+                window.history.replaceState({}, '', url);
+            });
+            
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(' Auto-submit when selecting example questions'));
+            
+            checkboxContainer.appendChild(label);
+            
+            // Add the checkbox after the example questions heading
+            const heading = document.querySelector('.example-questions h3');
+            heading.parentNode.insertBefore(checkboxContainer, heading.nextSibling);
+            
+            // Set initial URL parameter
+            if (checkbox.checked) {
+                const url = new URL(window.location);
+                url.searchParams.set('autoSubmit', 'true');
+                window.history.replaceState({}, '', url);
+            }
+        });
+    </script>
 </div>
 {% endblock %}
