@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Optional, Union
 
-from llama_index.core.base.llms.types import LLM
+from llama_index.core.llms import LLM
 from pydantic import BaseModel, Field
 
 from src.models.factory import create_cost_effective_model

@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Optional, Union
 
-from llama_index.core.base.llms.types import LLM
+from llama_index.core.llms import LLM
 from llama_index.core.indices.vector_store import VectorStoreIndex
 from llama_index.core.response_synthesizers import ResponseMode
 from llama_index.core.retrievers import VectorIndexRetriever

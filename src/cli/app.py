@@ -36,7 +36,7 @@ def init(
         False,
         "--recreate",
         "-r",
-        help="Recreate vector database even if it already exists",
+        help="Recreate vector store index even if it already exists",
     ),
 ):
     """Initialize the GivingTuesday Campaign Advisor."""
@@ -62,7 +62,7 @@ def init(
             console.print(
                 "You must set the OPENAI_API_KEY in your .env file for embeddings to work."
             )
-            console.print("This is required for the vector database to function.")
+            console.print("This is required for the vector store to function.")
             console.print("")
             console.print(
                 "Please create or edit your .env file and add the following line:"
@@ -144,11 +144,23 @@ def init(
         
         # Try to get document count for summary
         try:
-            vector_store = index._vector_store
-            if hasattr(vector_store, "get"):
-                doc_count = len(vector_store.get(include=[])["ids"])
+            # First try to get node count if available
+            nodes = index._nodes if hasattr(index, "_nodes") else []
+            if nodes:
+                doc_count = len(nodes)
             else:
-                doc_count = "Unknown"
+                # If nodes not available, try to get from vector store
+                vector_store = index._vector_store
+                if hasattr(vector_store, "get"):
+                    # For ChromaVectorStore, use get() method
+                    doc_count = len(vector_store.get(include=[])["ids"])
+                elif hasattr(vector_store, "_collection"):
+                    # For older versions, try the collection
+                    doc_count = vector_store._collection.count()
+                else:
+                    doc_count = "Unknown"
+            
+            logger.info(f"Successfully loaded {doc_count} documents in vector store index")
         except Exception as e:
             logger.debug(f"Error getting document count: {e}")
             doc_count = "Unknown"
@@ -170,7 +182,7 @@ def init(
 def search(
     query: str = typer.Argument(
         ...,  # Required
-        help="Direct search query for the vector database",
+        help="Direct search query for the vector store index",
     ),
     top_k: int = typer.Option(
         5,
@@ -194,22 +206,22 @@ def search(
         False,
         "--recreate",
         "-r",
-        help="Recreate vector database even if it already exists",
+        help="Recreate vector store index even if it already exists",
     ),
 ):
-    """Developer tool to directly search the vector database."""
+    """Developer tool to directly search the vector store index."""
     # Set up logging
     setup_logging(level="INFO")
 
     try:
         if recreate:
-            # If recreate is True, delete the existing vector database
+            # If recreate is True, delete the existing vector store
             from src.utils.config import config
             import shutil
 
             db_path = config.vectordb.database_path
             if db_path.exists():
-                logger.info(f"Deleting existing vector database at {db_path}")
+                logger.info(f"Deleting existing vector store at {db_path}")
                 shutil.rmtree(db_path)
 
         # Get or create vector store index - will only create if needed
@@ -217,13 +229,27 @@ def search(
 
         # Show stats about the vector store index
         try:
-            vector_store = index._vector_store
-            count = len(vector_store.get(include=[])["ids"]) if hasattr(vector_store, "get") else "Unknown"
+            # First try to get node count if available
+            count = "Unknown"
+            
+            # Try different methods to get the document count
+            if hasattr(index, "_nodes") and index._nodes:
+                count = len(index._nodes)
+            elif hasattr(index, "_vector_store"):
+                vector_store = index._vector_store
+                if hasattr(vector_store, "get"):
+                    count = len(vector_store.get(include=[])["ids"])
+                elif hasattr(vector_store, "_collection") and hasattr(vector_store._collection, "count"):
+                    count = vector_store._collection.count()
+                    
             console.print(
                 f"Using vector store index with [bold cyan]{count}[/bold cyan] documents"
             )
         except Exception as e:
             logger.debug(f"Could not get vector store document count: {e}")
+            console.print(
+                f"Using vector store index (document count unknown)"
+            )
 
         # Create retriever to perform direct search
         from llama_index.core.retrievers import VectorIndexRetriever
@@ -279,8 +305,8 @@ def search(
                     console.print("---")
 
     except Exception as e:
-        logger.error(f"Error searching vector store: {e}")
-        console.print(f"[bold red]Error searching vector store:[/bold red] {e}")
+        logger.error(f"Error searching vector store index: {e}")
+        console.print(f"[bold red]Error searching vector store index:[/bold red] {e}")
         sys.exit(1)
 
 

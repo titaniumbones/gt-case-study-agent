@@ -2,8 +2,8 @@
 
 from typing import Any, Dict, Optional, Union
 
-from llama_index.core.base.llms.types import LLM
-from llama_index.core.embeddings.base import BaseEmbedding
+from llama_index.core.llms import LLM
+from llama_index.core.embeddings import BaseEmbedding
 from llama_index.llms.anthropic import Anthropic
 from llama_index.llms.openai import OpenAI
 from llama_index.embeddings.openai import OpenAIEmbedding

@@ -56,10 +56,23 @@ async def startup_event():
     
     # Try to log document count
     try:
-        vector_store = index._vector_store
-        if hasattr(vector_store, "get"):
-            doc_count = len(vector_store.get(include=[])["ids"])
-            logger.info(f"Vector store index loaded with {doc_count} documents")
+        # First try to get node count if available
+        nodes = index._nodes if hasattr(index, "_nodes") else []
+        if nodes:
+            doc_count = len(nodes)
+        else:
+            # If nodes not available, try to get from vector store
+            vector_store = index._vector_store
+            if hasattr(vector_store, "get"):
+                # For ChromaVectorStore, use get() method
+                doc_count = len(vector_store.get(include=[])["ids"])
+            elif hasattr(vector_store, "_collection"):
+                # For older versions, try the collection
+                doc_count = vector_store._collection.count()
+            else:
+                doc_count = "Unknown"
+        
+        logger.info(f"Vector store index loaded with {doc_count} documents")
     except Exception as e:
         logger.debug(f"Could not get document count: {e}")
     

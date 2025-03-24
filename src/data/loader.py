@@ -279,7 +279,7 @@ def create_vector_store_index(documents: List[Document]) -> VectorStoreIndex:
     # Create embedding function
     embed_model = create_embedding_model()
     
-    # Create directory for vector database if it doesn't exist
+    # Create directory for vector store if it doesn't exist
     persist_dir = str(config.vectordb.database_path)
     Path(persist_dir).mkdir(parents=True, exist_ok=True)
     
@@ -346,10 +346,10 @@ def load_vector_store_index() -> Optional[VectorStoreIndex]:
     db_path = config.vectordb.database_path
     
     if not db_path.exists():
-        logger.warning(f"Vector database not found at {db_path}")
+        logger.warning(f"Vector store not found at {db_path}")
         return None
     
-    logger.info(f"Loading vector database from {db_path}")
+    logger.info(f"Loading vector store from {db_path}")
     
     try:
         # Create embedding model
