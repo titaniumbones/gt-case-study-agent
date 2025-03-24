@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-from src.data.loader import get_or_create_vector_database
+from src.data.loader import get_or_create_vector_store_index
 from src.data.schema import CampaignAdvice, CampaignQuery
 from src.models.advisor import CampaignAdvisor
 from src.utils.logging import logger, setup_logging
@@ -31,28 +31,37 @@ app.mount("/static", StaticFiles(directory="src/web/static"), name="static")
 # Create campaign advisor
 @app.on_event("startup")
 async def startup_event():
-    # Get or create vector database
-    vectordb = get_or_create_vector_database()
+    # Get or create vector store index
+    index = get_or_create_vector_store_index()
     
     # Create models
     from src.models.factory import create_reasoning_model, create_cost_effective_model
     
     # Create high-quality advisor
     app.state.high_quality_advisor = CampaignAdvisor(
-        vectordb,
+        index,
         model=create_reasoning_model(),
         use_query_enhancement=True
     )
     
     # Create cost-effective advisor
     app.state.cost_effective_advisor = CampaignAdvisor(
-        vectordb,
+        index,
         model=create_cost_effective_model(),
         use_query_enhancement=True
     )
     
     # Default advisor
     app.state.advisor = app.state.high_quality_advisor
+    
+    # Try to log document count
+    try:
+        vector_store = index._vector_store
+        if hasattr(vector_store, "get"):
+            doc_count = len(vector_store.get(include=[])["ids"])
+            logger.info(f"Vector store index loaded with {doc_count} documents")
+    except Exception as e:
+        logger.debug(f"Could not get document count: {e}")
     
     logger.info("Web application started")
 

@@ -9,7 +9,7 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 
-from src.data.loader import get_or_create_vector_database
+from src.data.loader import get_or_create_vector_store_index
 from src.models.advisor import CampaignAdvisor
 from src.utils.logging import logger, setup_logging
 
@@ -76,19 +76,31 @@ def init(
             # Exit with error
             sys.exit(1)
 
-        # For initialization, we should explicitly create the database
+        # For initialization, we should explicitly create the vector store index
         # rather than try to load an existing one that might be empty
         from src.data.loader import (
             load_case_studies,
-            create_vector_database,
-            load_vector_database,
+            create_documents_from_case_studies,
+            create_vector_store_index,
+            load_vector_store_index,
         )
 
-        # First try to load existing database to check if it has documents
-        vectordb = load_vector_database()
-        if vectordb is None or vectordb._collection.count() == 0:
-            # If database doesn't exist or is empty, create new one
-            logger.info("Creating new vector database with case studies")
+        # First try to load existing vector store index
+        index = load_vector_store_index()
+        try:
+            # Check if the index is empty
+            doc_count = 0
+            if index is not None:
+                vector_store = index._vector_store
+                if hasattr(vector_store, "get"):
+                    doc_count = len(vector_store.get(include=[])["ids"])
+        except Exception as e:
+            logger.debug(f"Error checking vector store document count: {e}")
+            doc_count = 0
+            
+        if index is None or doc_count == 0:
+            # If index doesn't exist or is empty, create new one
+            logger.info("Creating new vector store index with case studies")
 
             if not config.models.openai_api_key:
                 console.print(
@@ -124,13 +136,27 @@ def init(
             if not case_studies:
                 raise ValueError("No case studies loaded. Please check the file path.")
 
-            logger.info(f"Loaded {len(case_studies)} case studies, creating embeddings")
-            vectordb = create_vector_database(case_studies)
+            logger.info(f"Loaded {len(case_studies)} case studies, creating documents")
+            documents = create_documents_from_case_studies(case_studies)
+            
+            logger.info(f"Creating vector store index with {len(documents)} documents")
+            index = create_vector_store_index(documents)
+        
+        # Try to get document count for summary
+        try:
+            vector_store = index._vector_store
+            if hasattr(vector_store, "get"):
+                doc_count = len(vector_store.get(include=[])["ids"])
+            else:
+                doc_count = "Unknown"
+        except Exception as e:
+            logger.debug(f"Error getting document count: {e}")
+            doc_count = "Unknown"
 
         console.print(
             Panel(
                 f"[bold green]GivingTuesday Campaign Advisor initialized successfully![/bold green]\n"
-                f"Vector database contains {vectordb._collection.count()} case studies."
+                f"Vector store index contains {doc_count} documents."
             )
         )
 
@@ -186,35 +212,42 @@ def search(
                 logger.info(f"Deleting existing vector database at {db_path}")
                 shutil.rmtree(db_path)
 
-        # Get or create vector database - will only create if needed
-        vectordb = get_or_create_vector_database()
+        # Get or create vector store index - will only create if needed
+        index = get_or_create_vector_store_index()
 
-        # Show stats about the vector database
+        # Show stats about the vector store index
         try:
-            count = vectordb._collection.count()
+            vector_store = index._vector_store
+            count = len(vector_store.get(include=[])["ids"]) if hasattr(vector_store, "get") else "Unknown"
             console.print(
-                f"Using vector database with [bold cyan]{count}[/bold cyan] documents"
+                f"Using vector store index with [bold cyan]{count}[/bold cyan] documents"
             )
         except Exception as e:
-            logger.debug(f"Could not get vector database count: {e}")
+            logger.debug(f"Could not get vector store document count: {e}")
 
-        # Perform direct search
-        results = vectordb.similarity_search(query, k=top_k)
+        # Create retriever to perform direct search
+        from llama_index.core.retrievers import VectorIndexRetriever
+        retriever = VectorIndexRetriever(
+            index=index,
+            similarity_top_k=top_k,
+        )
+        nodes = retriever.retrieve(query)
 
         if format_json:
             import json
 
             output = []
-            for i, doc in enumerate(results, 1):
+            for i, node in enumerate(nodes, 1):
+                score = round(node.score, 4) if hasattr(node, 'score') else "N/A"
                 item = {
                     "rank": i,
-                    "title": doc.metadata.get("case_study_entry", "Unknown"),
-                    "country": doc.metadata.get("country", "Unknown"),
-                    "score": "N/A",  # Score not available from similarity_search
+                    "title": node.metadata.get("case_study_entry", "Unknown"),
+                    "country": node.metadata.get("country", "Unknown"),
+                    "score": score
                 }
 
                 if show_content:
-                    item["content"] = doc.page_content
+                    item["content"] = node.text
 
                 output.append(item)
 
@@ -223,30 +256,31 @@ def search(
             # Display results in human-readable format
             console.print(Panel(f"[bold]Search Results for:[/bold] {query}"))
 
-            for i, doc in enumerate(results, 1):
-                title = doc.metadata.get("case_study_entry", "Unknown Case Study")
-                country = doc.metadata.get("country", "Unknown")
+            for i, node in enumerate(nodes, 1):
+                title = node.metadata.get("case_study_entry", "Unknown Case Study")
+                country = node.metadata.get("country", "Unknown")
+                score = round(node.score, 4) if hasattr(node, 'score') else "N/A"
 
-                console.print(f"\n[bold cyan]{i}. {title}[/bold cyan] ({country})")
+                console.print(f"\n[bold cyan]{i}. {title}[/bold cyan] ({country}) [Score: {score}]")
 
                 # Show metadata highlights
-                if doc.metadata.get("focus_area"):
+                if node.metadata.get("focus_area"):
                     console.print(
-                        f"[bold]Focus Area:[/bold] {doc.metadata['focus_area']}"
+                        f"[bold]Focus Area:[/bold] {node.metadata['focus_area']}"
                     )
 
-                if doc.metadata.get("main_theme"):
-                    console.print(f"[bold]Theme:[/bold] {doc.metadata['main_theme']}")
+                if node.metadata.get("main_theme"):
+                    console.print(f"[bold]Theme:[/bold] {node.metadata['main_theme']}")
 
                 # Show content if requested
                 if show_content:
                     console.print("\n[bold]Content used for embedding:[/bold]")
-                    console.print(doc.page_content)
+                    console.print(node.text)
                     console.print("---")
 
     except Exception as e:
-        logger.error(f"Error searching vector database: {e}")
-        console.print(f"[bold red]Error searching vector database:[/bold red] {e}")
+        logger.error(f"Error searching vector store: {e}")
+        console.print(f"[bold red]Error searching vector store:[/bold red] {e}")
         sys.exit(1)
 
 
@@ -279,8 +313,8 @@ def ask(
     setup_logging(level="INFO")
 
     try:
-        # Get or create vector database
-        vectordb = get_or_create_vector_database()
+        # Get or create vector store index
+        index = get_or_create_vector_store_index()
 
         # Create appropriate model
         if fast_mode:
@@ -296,7 +330,7 @@ def ask(
 
         # Create campaign advisor
         advisor = CampaignAdvisor(
-            vectordb, model=model, use_query_enhancement=not no_preprocessing
+            index, model=model, use_query_enhancement=not no_preprocessing
         )
 
         if interactive:

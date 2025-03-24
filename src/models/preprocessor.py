@@ -1,11 +1,8 @@
-"""Preprocessing utilities for GivingTuesday campaign advisor."""
+"""Preprocessing utilities for GivingTuesday campaign advisor using LlamaIndex."""
 
 from typing import Dict, List, Optional, Union
 
-from langchain.chains import LLMChain
-from langchain.prompts import ChatPromptTemplate
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.output_parsers import StrOutputParser
+from llama_index.core.base.llms.types import LLM
 from pydantic import BaseModel, Field
 
 from src.models.factory import create_cost_effective_model
@@ -36,7 +33,7 @@ class QueryPreprocessor:
     This class enhances user queries for better retrieval and analysis.
     """
 
-    def __init__(self, model: Optional[BaseChatModel] = None):
+    def __init__(self, model: Optional[LLM] = None):
         """Initialize the preprocessor.
 
         Args:
@@ -57,30 +54,26 @@ class QueryPreprocessor:
         """
         logger.debug(f"Enhancing query: {query}")
 
-        # Create prompt template
-        prompt = ChatPromptTemplate.from_template(
-            """You are a query enhancement assistant for a GivingTuesday campaign advisor system.
-            Your task is to enhance the user's query to improve retrieval of relevant campaign examples.
-            
-            USER QUERY: {query}
-            
-            Please enhance this query by:
-            1. Expanding abbreviations
-            2. Adding relevant synonyms
-            3. Clarifying ambiguous terms
-            4. Adding key GivingTuesday concepts that are implied but not stated
-            5. Including terms that would help find quotes and specific examples from campaigns
-            6. Adding terminology that would help find success stories and quotable campaign outcomes
-            
-            Provide ONLY the enhanced query text without any explanations or additional text.
-            """
-        )
+        # Create the prompt for query enhancement
+        prompt_template = """You are a query enhancement assistant for a GivingTuesday campaign advisor system.
+        Your task is to enhance the user's query to improve retrieval of relevant campaign examples.
+        
+        USER QUERY: {query}
+        
+        Please enhance this query by:
+        1. Expanding abbreviations
+        2. Adding relevant synonyms
+        3. Clarifying ambiguous terms
+        4. Adding key GivingTuesday concepts that are implied but not stated
+        5. Including terms that would help find quotes and specific examples from campaigns
+        6. Adding terminology that would help find success stories and quotable campaign outcomes
+        
+        Provide ONLY the enhanced query text without any explanations or additional text.
+        """
 
-        # Create chain
-        chain = prompt | self.llm | StrOutputParser()
-
-        # Enhance query
-        enhanced_query = chain.invoke({"query": query})
+        # Use the LLM to enhance the query
+        prompt = prompt_template.format(query=query)
+        enhanced_query = self.llm.complete(prompt).text.strip()
 
         logger.debug(f"Enhanced query: {enhanced_query}")
         return enhanced_query
@@ -99,35 +92,31 @@ class QueryPreprocessor:
         # First enhance the query
         enhanced_query = self.enhance_query(query)
 
-        # Create prompt template for analysis
-        prompt = ChatPromptTemplate.from_template(
-            """You are a query analysis assistant for a GivingTuesday campaign advisor system.
-            Your task is to analyze the user's query to extract key themes, focus areas, search keywords, and identify quotable content.
-            
-            ENHANCED QUERY: {enhanced_query}
-            
-            Please analyze this query and extract:
-            1. Key themes related to GivingTuesday campaigns
-            2. Relevant focus areas (e.g., fundraising, volunteer mobilization, social media)
-            3. Specific keywords that would be useful for searching campaign examples
-            4. Terms that would help identify quotable success stories, statistics, or testimonials
-            5. Words related to specific campaign tactics or strategies that should be highlighted
-            
-            Format your response as follows:
-            Key Themes: theme1, theme2, theme3
-            Focus Areas: area1, area2, area3
-            Search Keywords: keyword1, keyword2, keyword3, keyword4
-            Quote Keywords: quote1, quote2, quote3, quote4
-            
-            Be specific and thorough in your analysis. The Quote Keywords will be especially important for finding content that can be directly quoted in our response.
-            """
-        )
+        # Create the prompt for query analysis
+        prompt_template = """You are a query analysis assistant for a GivingTuesday campaign advisor system.
+        Your task is to analyze the user's query to extract key themes, focus areas, search keywords, and identify quotable content.
+        
+        ENHANCED QUERY: {enhanced_query}
+        
+        Please analyze this query and extract:
+        1. Key themes related to GivingTuesday campaigns
+        2. Relevant focus areas (e.g., fundraising, volunteer mobilization, social media)
+        3. Specific keywords that would be useful for searching campaign examples
+        4. Terms that would help identify quotable success stories, statistics, or testimonials
+        5. Words related to specific campaign tactics or strategies that should be highlighted
+        
+        Format your response as follows:
+        Key Themes: theme1, theme2, theme3
+        Focus Areas: area1, area2, area3
+        Search Keywords: keyword1, keyword2, keyword3, keyword4
+        Quote Keywords: quote1, quote2, quote3, quote4
+        
+        Be specific and thorough in your analysis. The Quote Keywords will be especially important for finding content that can be directly quoted in our response.
+        """
 
-        # Create chain
-        chain = prompt | self.llm | StrOutputParser()
-
-        # Analyze query
-        analysis_text = chain.invoke({"enhanced_query": enhanced_query})
+        # Use the LLM to analyze the query
+        prompt = prompt_template.format(enhanced_query=enhanced_query)
+        analysis_text = self.llm.complete(prompt).text
 
         # Parse analysis
         try:
@@ -140,20 +129,14 @@ class QueryPreprocessor:
                 line = line.strip()
                 if line.startswith("Key Themes:"):
                     themes = line.replace("Key Themes:", "").strip()
-                    key_themes = [
-                        theme.strip() for theme in themes.split(",") if theme.strip()
-                    ]
+                    key_themes = [theme.strip() for theme in themes.split(",") if theme.strip()]
                 elif line.startswith("Focus Areas:"):
                     areas = line.replace("Focus Areas:", "").strip()
-                    focus_areas = [
-                        area.strip() for area in areas.split(",") if area.strip()
-                    ]
+                    focus_areas = [area.strip() for area in areas.split(",") if area.strip()]
                 elif line.startswith("Search Keywords:"):
                     keywords = line.replace("Search Keywords:", "").strip()
                     search_keywords = [
-                        keyword.strip()
-                        for keyword in keywords.split(",")
-                        if keyword.strip()
+                        keyword.strip() for keyword in keywords.split(",") if keyword.strip()
                     ]
                 elif line.startswith("Quote Keywords:"):
                     quotes = line.replace("Quote Keywords:", "").strip()

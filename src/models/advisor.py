@@ -1,15 +1,13 @@
-"""GivingTuesday Campaign Advisor model components."""
+"""GivingTuesday Campaign Advisor model components using LlamaIndex."""
 
 from typing import Dict, List, Optional, Union
 
-from langchain.chains import LLMChain
-from langchain.prompts import ChatPromptTemplate, PromptTemplate
-from langchain_community.vectorstores import Chroma
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.output_parsers import StrOutputParser
-from pydantic import BaseModel
+from llama_index.core.base.llms.types import LLM
+from llama_index.core.indices.vector_store import VectorStoreIndex
+from llama_index.core.response_synthesizers import ResponseMode
+from llama_index.core.retrievers import VectorIndexRetriever
 
-from src.data.schema import CampaignAdvice, CaseStudy
+from src.data.schema import CampaignAdvice
 from src.models.factory import create_reasoning_model
 from src.models.preprocessor import QueryPreprocessor
 from src.utils.config import config
@@ -24,22 +22,22 @@ class CampaignAdvisor:
 
     def __init__(
         self,
-        vectordb: Chroma,
-        model: Optional[BaseChatModel] = None,
+        index: VectorStoreIndex,
+        model: Optional[LLM] = None,
         preprocessor: Optional[QueryPreprocessor] = None,
         use_query_enhancement: bool = True,
     ):
         """Initialize the advisor.
 
         Args:
-            vectordb: Vector database of case studies.
+            index: Vector store index of case studies.
             model: Optional language model to use. If not provided, a default model
                 will be created based on configuration.
             preprocessor: Optional query preprocessor. If not provided and
                 use_query_enhancement is True, a default preprocessor will be created.
             use_query_enhancement: Whether to use query enhancement. Defaults to True.
         """
-        self.vectordb = vectordb
+        self.index = index
         self.use_query_enhancement = use_query_enhancement
 
         # Initialize language model
@@ -72,10 +70,22 @@ class CampaignAdvisor:
             except Exception as e:
                 logger.warning(f"Error enhancing query: {e}. Using original query.")
 
-        # Search for relevant documents
-        relevant_docs = self.vectordb.similarity_search(search_query, k=k)
-        case_studies = [doc.metadata for doc in relevant_docs]
+        # Create retriever with top-k
+        retriever = VectorIndexRetriever(
+            index=self.index,
+            similarity_top_k=k,
+        )
 
+        # Retrieve nodes
+        nodes = retriever.retrieve(search_query)
+        
+        # Extract metadata from nodes
+        case_studies = []
+        for node in nodes:
+            if hasattr(node, 'metadata') and node.metadata:
+                case_studies.append(node.metadata)
+                
+        logger.info(f"Retrieved {len(case_studies)} case studies for query")
         return case_studies
 
     def generate_advice(self, query: str, case_studies: List[Dict]) -> CampaignAdvice:
@@ -89,41 +99,6 @@ class CampaignAdvisor:
             Campaign advice.
         """
         logger.debug(f"Generating advice for query: {query}")
-
-        # Create prompt template
-        prompt = ChatPromptTemplate.from_template(
-            """You are an expert advisor for GivingTuesday campaigns. Your job is to provide 
-            helpful, actionable advice based on successful case studies.
-            
-            USER QUERY: {query}
-            
-            RELEVANT CASE STUDIES:
-            {case_studies}
-            
-            Based on these case studies, provide specific, actionable advice for the user's query.
-            Focus on practical strategies that have been proven effective in similar campaigns.
-            Include references to specific case studies that support your advice.
-            
-            FORMAT YOUR RESPONSE AS FOLLOWS:
-            1. Start with a brief introduction to establish context
-            2. Provide 3-5 specific, actionable recommendations
-            3. For each recommendation:
-               - Explain its relevance
-               - Include at least one brief quote or specific example from a case study
-               - Explicitly mention the campaign name (e.g., "As demonstrated by the [Campaign Name]...")
-               - Format campaign references in bold or with quotes for emphasis
-            4. End with a brief conclusion
-            
-            IMPORTANT: 
-            - Be specific and practical with each piece of advice
-            - For EVERY recommendation, include a direct quote or specific example from the case studies
-            - ALWAYS include the exact name of the relevant campaign for each example
-            - Use phrases like "According to [Campaign Name]..." or "The [Campaign Name] showed that..."
-            - Put campaign names in quotes or bold (using markdown) for emphasis
-            - Focus on strategies that have been proven successful in similar contexts
-            - Adapt the advice to the user's specific query
-            """
-        )
 
         # Format case studies for the prompt
         case_studies_text = ""
@@ -166,11 +141,47 @@ class CampaignAdvisor:
             # Add to references
             references.append(case_study_name)
 
-        # Create chain
-        chain = prompt | self.llm | StrOutputParser()
+        # Create prompt template for generating advice
+        prompt_template = """You are an expert advisor for GivingTuesday campaigns. Your job is to provide 
+        helpful, actionable advice based on successful case studies.
+        
+        USER QUERY: {query}
+        
+        RELEVANT CASE STUDIES:
+        {case_studies}
+        
+        Based on these case studies, provide specific, actionable advice for the user's query.
+        Focus on practical strategies that have been proven effective in similar campaigns.
+        Include references to specific case studies that support your advice.
+        
+        FORMAT YOUR RESPONSE AS FOLLOWS:
+        1. Start with a brief introduction to establish context
+        2. Provide 3-5 specific, actionable recommendations
+        3. For each recommendation:
+           - Explain its relevance
+           - Include at least one brief quote or specific example from a case study
+           - Explicitly mention the campaign name (e.g., "As demonstrated by the [Campaign Name]...")
+           - Format campaign references in bold or with quotes for emphasis
+        4. End with a brief conclusion
+        
+        IMPORTANT: 
+        - Be specific and practical with each piece of advice
+        - For EVERY recommendation, include a direct quote or specific example from the case studies
+        - ALWAYS include the exact name of the relevant campaign for each example
+        - Use phrases like "According to [Campaign Name]..." or "The [Campaign Name] showed that..."
+        - Put campaign names in quotes or bold (using markdown) for emphasis
+        - Focus on strategies that have been proven successful in similar contexts
+        - Adapt the advice to the user's specific query
+        """
 
-        # Generate advice
-        advice_text = chain.invoke({"query": query, "case_studies": case_studies_text})
+        # Format the prompt with query and case studies
+        prompt = prompt_template.format(
+            query=query,
+            case_studies=case_studies_text
+        )
+
+        # Generate advice using the LLM
+        advice_text = self.llm.complete(prompt).text
 
         # Create advice object
         advice = CampaignAdvice(advice=advice_text, references=references)

@@ -1,21 +1,18 @@
-"""Factory functions for creating language models."""
+"""Factory functions for creating language models using LlamaIndex."""
 
-from typing import Callable, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union
 
-from langchain.chat_models.base import BaseChatModel
-from langchain.embeddings.base import Embeddings
-from langchain_anthropic import ChatAnthropic
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.llms import LlamaCpp
-from langchain_core.language_models import BaseLLM
-from langchain_core.language_models.llms import BaseLLM
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from llama_index.core.base.llms.types import LLM
+from llama_index.core.embeddings.base import BaseEmbedding
+from llama_index.llms.anthropic import Anthropic
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
 
 from src.utils.config import ModelProvider, config
 from src.utils.logging import logger
 
 
-def create_reasoning_model() -> BaseChatModel:
+def create_reasoning_model() -> LLM:
     """Create a high-quality reasoning model.
     
     Returns:
@@ -31,27 +28,27 @@ def create_reasoning_model() -> BaseChatModel:
         if not config.models.anthropic_api_key:
             raise ValueError("Anthropic API key is required for Anthropic models")
         
-        return ChatAnthropic(
+        return Anthropic(
             model=model_name,
             temperature=temperature,
-            anthropic_api_key=config.models.anthropic_api_key
+            api_key=config.models.anthropic_api_key
         )
         
     elif provider == ModelProvider.OPENAI:
         if not config.models.openai_api_key:
             raise ValueError("OpenAI API key is required for OpenAI models")
         
-        return ChatOpenAI(
+        return OpenAI(
             model=model_name,
             temperature=temperature,
-            openai_api_key=config.models.openai_api_key
+            api_key=config.models.openai_api_key
         )
         
     else:
         raise ValueError(f"Unsupported provider for reasoning model: {provider}")
 
 
-def create_cost_effective_model() -> BaseChatModel:
+def create_cost_effective_model() -> LLM:
     """Create a cost-effective model for processing.
     
     Returns:
@@ -67,38 +64,27 @@ def create_cost_effective_model() -> BaseChatModel:
         if not config.models.anthropic_api_key:
             raise ValueError("Anthropic API key is required for Anthropic models")
         
-        return ChatAnthropic(
+        return Anthropic(
             model=model_name,
             temperature=temperature,
-            anthropic_api_key=config.models.anthropic_api_key
+            api_key=config.models.anthropic_api_key
         )
         
     elif provider == ModelProvider.OPENAI:
         if not config.models.openai_api_key:
             raise ValueError("OpenAI API key is required for OpenAI models")
         
-        return ChatOpenAI(
+        return OpenAI(
             model=model_name,
             temperature=temperature,
-            openai_api_key=config.models.openai_api_key
-        )
-        
-    elif provider == ModelProvider.LOCAL:
-        if not config.models.local_model_path:
-            raise ValueError("Local model path is required for local models")
-        
-        return LlamaCpp(
-            model_path=config.models.local_model_path,
-            temperature=temperature,
-            n_ctx=2048,
-            verbose=False
+            api_key=config.models.openai_api_key
         )
         
     else:
         raise ValueError(f"Unsupported provider for cost-effective model: {provider}")
 
 
-def create_embedding_model() -> Embeddings:
+def create_embedding_model() -> BaseEmbedding:
     """Create an embedding model.
     
     Returns:
@@ -117,15 +103,10 @@ def create_embedding_model() -> Embeddings:
                 "Please set the OPENAI_API_KEY environment variable in your .env file."
             )
         
-        return OpenAIEmbeddings(
-            model=model_name,
-            openai_api_key=config.models.openai_api_key
+        return OpenAIEmbedding(
+            model_name=model_name,
+            api_key=config.models.openai_api_key
         )
-        
-    elif provider == ModelProvider.HUGGINGFACE:
-        return HuggingFaceEmbeddings(
-            model_name=model_name
-        )
-        
+    
     else:
         raise ValueError(f"Unsupported provider for embedding model: {provider}")

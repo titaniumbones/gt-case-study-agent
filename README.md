@@ -6,13 +6,14 @@ An AI-powered advisor for planning and executing successful GivingTuesday campai
 
 - Provides specific, actionable advice based on successful GivingTuesday campaigns
 - Analyzes case studies to find relevant examples
-- Multi-model architecture:
+- Multi-model architecture using LlamaIndex:
   - Claude 3.7 Sonnet for high-quality detailed reasoning 
   - Claude 3.5 Haiku for cost-effective quick responses
   - OpenAI Embeddings for efficient vector search
 - Query enhancement using cost-effective models
 - Supports both command-line and web interfaces
 - Designed for easy extension with additional data sources and models
+- Built with modern LlamaIndex retrieval techniques
 
 ## Installation
 
@@ -73,7 +74,7 @@ You can specify a custom case study file:
 python main.py cli init --case-study-file /path/to/your/case-studies.csv
 ```
 
-If you need to rebuild the vector database:
+If you need to rebuild the vector store index:
 ```
 python main.py cli init --recreate
 ```
@@ -100,7 +101,7 @@ python main.py cli ask --no-preprocessing "How can I mobilize volunteers for my 
 
 ### Developer Search Command
 
-Directly search the vector database to debug and test the embeddings:
+Directly search the vector store to debug and test the embeddings:
 ```
 python main.py search "volunteer mobilization"
 ```
@@ -120,7 +121,7 @@ Format output as JSON:
 python main.py search "social media" --json
 ```
 
-Force recreation of the vector database (only if needed):
+Force recreation of the vector store index (only if needed):
 ```
 python main.py search "fundraising" --recreate
 ```
@@ -189,9 +190,9 @@ uv offers significant performance improvements over traditional pip:
   uv pip install -U <package-name>
   ```
 
-- Install langchain-anthropic (if missing):
+- Install LlamaIndex dependencies:
   ```
-  uv pip install langchain-anthropic
+  uv pip install llama-index-llms-anthropic llama-index-embeddings-openai
   ```
 
 ## License
