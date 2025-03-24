@@ -12,6 +12,7 @@ from src.models.factory import create_reasoning_model
 from src.models.preprocessor import QueryPreprocessor
 from src.utils.config import config
 from src.utils.logging import logger
+from src.prompts import ADVICE_GENERATION_PROMPT, FAST_MODE_ADVICE_PROMPT
 
 
 class CampaignAdvisor:
@@ -42,6 +43,16 @@ class CampaignAdvisor:
 
         # Initialize language model
         self.llm = model or create_reasoning_model()
+        
+        # Check if this is a fast mode (for prompt selection)
+        # We'll check based on the name of the model since type checking is unreliable
+        self.is_fast_mode = False
+        
+        # If we have a model, check if it matches any patterns for cost-effective models
+        if model:
+            model_identifiers = ["haiku", "cost-effective", "fast"]
+            model_name = getattr(model, "model", "").lower()
+            self.is_fast_mode = any(identifier in model_name for identifier in model_identifiers)
 
         # Initialize preprocessor if needed
         self.preprocessor = None
@@ -141,38 +152,11 @@ class CampaignAdvisor:
             # Add to references
             references.append(case_study_name)
 
-        # Create prompt template for generating advice
-        prompt_template = """You are an expert advisor for GivingTuesday campaigns. Your job is to provide 
-        helpful, actionable advice based on successful case studies.
-        
-        USER QUERY: {query}
-        
-        RELEVANT CASE STUDIES:
-        {case_studies}
-        
-        Based on these case studies, provide specific, actionable advice for the user's query.
-        Focus on practical strategies that have been proven effective in similar campaigns.
-        Include references to specific case studies that support your advice.
-        
-        FORMAT YOUR RESPONSE AS FOLLOWS:
-        1. Start with a brief introduction to establish context
-        2. Provide 3-5 specific, actionable recommendations
-        3. For each recommendation:
-           - Explain its relevance
-           - Include at least one brief quote or specific example from a case study
-           - Explicitly mention the campaign name (e.g., "As demonstrated by the [Campaign Name]...")
-           - Format campaign references in bold or with quotes for emphasis
-        4. End with a brief conclusion
-        
-        IMPORTANT: 
-        - Be specific and practical with each piece of advice
-        - For EVERY recommendation, include a direct quote or specific example from the case studies
-        - ALWAYS include the exact name of the relevant campaign for each example
-        - Use phrases like "According to [Campaign Name]..." or "The [Campaign Name] showed that..."
-        - Put campaign names in quotes or bold (using markdown) for emphasis
-        - Focus on strategies that have been proven successful in similar contexts
-        - Adapt the advice to the user's specific query
-        """
+        # Select the appropriate prompt based on fast mode
+        if self.is_fast_mode:
+            prompt_template = FAST_MODE_ADVICE_PROMPT
+        else:
+            prompt_template = ADVICE_GENERATION_PROMPT
 
         # Format the prompt with query and case studies
         prompt = prompt_template.format(

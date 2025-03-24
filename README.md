@@ -143,6 +143,8 @@ Then open http://127.0.0.1:8001 in your browser.
   - `utils/`: Utility functions
   - `cli/`: Command-line interface
   - `web/`: Web application
+  - `prompts.py`: Centralized prompt templates
+  - `tools/`: Development and maintenance tools
 - `data/`: Data files
   - `case-study-inventory.csv`: GivingTuesday case studies
 - `tests/`: Unit tests
@@ -170,6 +172,26 @@ Compile SCSS to CSS:
 python build_css.py
 ```
 *Note: You must run this whenever you modify SCSS files*
+
+## Modifying Prompts
+
+The application uses a centralized prompts module for all LLM interactions. To view, edit, or compare prompts, use the prompt editor tool:
+
+```
+# List all available prompts
+python -m src.tools.prompt_editor view
+
+# View a specific prompt
+python -m src.tools.prompt_editor view ADVICE_GENERATION_PROMPT
+
+# Edit a prompt in your default editor
+python -m src.tools.prompt_editor edit QUERY_ENHANCEMENT_PROMPT
+
+# Compare two prompts side by side
+python -m src.tools.prompt_editor compare ADVICE_GENERATION_PROMPT FAST_MODE_ADVICE_PROMPT
+```
+
+All prompts are stored in `src/prompts.py` and can also be edited directly. Changes to prompts will immediately affect the application's behavior without requiring code changes.
 
 ## Using uv for Package Management
 
