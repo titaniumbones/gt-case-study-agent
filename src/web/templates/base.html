@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <!-- Import Google Fonts: Montserrat for headings, Open Sans for body text -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Import compiled CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', path='css/main.css') }}">
+</head>
+<body>
+    <header>
+        <div class="logo">
+          <!-- Simple GivingTuesday-inspired SVG logo -->
+          <img alt="" src="https://www.givingtuesday.org/wp-content/themes/gtn/images/GT_logo_stacked2.png"/>
+            <!-- <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg"> -->
+            <!--     <rect width="60" height="60" rx="10" fill="#E43F23"/> -->
+            <!--     <path d="M18 18H42V24H36V42H30V24H24V36H18V18Z" fill="white"/> -->
+            <!-- </svg> -->
+        </div>
+        <h1>GivingTuesday Campaign Advisor</h1>
+    </header>
+    
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer>
+        <p>GivingTuesday Campaign Advisor &copy; 2025</p>
+    </footer>
+</body>
+</html>

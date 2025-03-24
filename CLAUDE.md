@@ -1,31 +1,60 @@
 # Claude Agent Instructions
 
 ## Project Description
-We are building a langchain-based chatbot app that gives advice on building GivingTuesday campaigns. Advice will come partly from the descriptions of successful GvingTuesday campaigns listed in `data/case-study-inventory.csv`. The project should use a mix of inexpensive Ais for initial processing, and expensive reasoning models. We will need to add additional datasources when they become available. The project should be well-documented and built in a way that enables easy extension. Use up to date versions of all relevant libraries.  First build a command-line version of the tool, and then a simple web application that can be run locally and accessed through a browser. The project will eventually be extended with additional feature and design constraints.
+We are building a langchain-based chatbot app that gives advice on building GivingTuesday campaigns. Advice comes from descriptions of successful GivingTuesday campaigns listed in `data/case-study-inventory.csv`. The project uses a mix of inexpensive AIs for initial processing, and expensive reasoning models. The system is designed to allow adding additional datasources when they become available.
 
 ## Build Commands
-- No formal build process is currently defined
-- For data processing, use: `python process_data.py` (when implemented)
+- Setup with uv (recommended): `./setup_env.sh` or `.\setup_env.ps1` on Windows
+- Install dependencies: `uv pip install -r requirements.txt` 
+- Install in development mode: `uv pip install -e .`
+- Alternative (standard pip): `pip install -r requirements.txt && pip install -e .`
 
 ## Lint and Formatting
-- Python: Use black for formatting (`black .`)
-- CSV data: Validate with `csvlint data.csv` (requires csvlint gem)
+- Format code: `black .`
+- Sort imports: `isort .`
+- Type checking: `mypy src`
+- Linting: `ruff check src`
+- Build assets: `python build_css.py`
 
 ## Test Commands
 - Run all tests: `pytest`
 - Run single test: `pytest tests/test_file.py::test_function`
+- Run tests with verbosity: `pytest -v`
+
+## Run Commands
+- CLI initialization: `python main.py cli init`
+- CLI query: `python main.py cli ask "How can I mobilize volunteers?"`
+- CLI interactive: `python main.py cli ask --interactive`
+- Web application: `python main.py web`
+- Developer search: `python main.py search "volunteer mobilization" --show-content`
+
+## Asset Building
+- Compile SCSS to CSS: `python build_css.py`
+  - Must run this whenever SCSS files are modified
+  - Creates compiled CSS files in src/web/static/css/ directory
 
 ## Code Style Guidelines
 - Follow PEP 8 for Python code
 - Use type hints for all function parameters and return values
+- Group imports: standard library, third-party, local 
+- Document classes and functions with docstrings
 - Use descriptive variable names in snake_case
-- Group imports: standard library, third-party, local
-- Handle errors explicitly with try/except blocks
-- Document functions with docstrings
-- Prefer immutable data structures when possible
-- CSV data should maintain consistent column ordering
+- Error handling: Use try/except blocks with specific exceptions
+- Use f-strings for string formatting
+- Use Path objects from pathlib for file operations
+- Follow langchain conventions for model definitions
 
 ## Project Structure
-- Keep data files in `/data` directory
-- Place processing scripts in project root
-- Use `/tests` for all test files
+- Data processing in `src/data/`
+- AI models in `src/models/`
+- CLI interface in `src/cli/`
+- Web interface in `src/web/`
+- Config and utilities in `src/utils/`
+- Tests in `tests/`
+
+## Environment Management
+- Use uv for fast package management
+- Virtual environment is in `.venv/` directory
+- Activate with `source .venv/bin/activate` (Unix) or `.\.venv\Scripts\Activate.ps1` (Windows)
+- If the langchain-anthropic package is missing: `uv pip install langchain-anthropic`
+- For web interface with markdown support: `uv pip install markdown bleach`

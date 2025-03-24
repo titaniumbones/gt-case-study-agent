@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="banner">
+    <div class="banner-inner">
+        <h2>Get Expert Advice for Your GivingTuesday Campaign</h2>
+        <p>Powered by AI analysis of successful campaigns worldwide</p>
+    </div>
+</div>
+
+<p>
+    Our AI-powered advisor analyzes real GivingTuesday case studies to provide you with specific, 
+    actionable advice for planning and executing your campaign.
+</p>
+
+<form action="/ask" method="post">
+    <div class="form-group">
+        <label for="query">What would you like to know about creating a GivingTuesday campaign?</label>
+        <textarea name="query" id="query" required></textarea>
+    </div>
+    
+    <div class="form-group checkbox-group">
+        <label>
+            <input type="checkbox" name="fast_mode" id="fast_mode" value="true">
+            Fast mode (quicker response with Claude 3.5 Haiku, but less detailed)
+        </label>
+    </div>
+    
+    <button type="submit">Get Advice</button>
+</form>
+
+<div class="example-questions">
+    <h3>Example Questions</h3>
+    <div class="question-grid">
+        <div class="question-card">
+            <div class="question-icon">👥</div>
+            <p>How can I mobilize volunteers for my GivingTuesday campaign?</p>
+        </div>
+        <div class="question-card">
+            <div class="question-icon">📣</div>
+            <p>What storytelling techniques work best for GivingTuesday?</p>
+        </div>
+        <div class="question-card">
+            <div class="question-icon">📊</div>
+            <p>How can I measure the success of my GivingTuesday campaign?</p>
+        </div>
+        <div class="question-card">
+            <div class="question-icon">🏢</div>
+            <p>What's the best way to engage local businesses in my campaign?</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

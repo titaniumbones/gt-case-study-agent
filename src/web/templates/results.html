@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="results-header">
+    <h2>Your Campaign Advice</h2>
+    
+    <div class="query-container">
+        <div class="query-label">Your question:</div>
+        <div class="query-text">{{ query }}</div>
+    </div>
+    
+    {% if model_type == "cost-effective" %}
+    <p class="model-info">Using <strong>fast mode</strong> with Claude 3.5 Haiku</p>
+    {% else %}
+    <p class="model-info">Using <strong>detailed mode</strong> with Claude 3.7 Sonnet</p>
+    {% endif %}
+</div>
+
+<div class="advice">
+    {{ advice | safe }}
+</div>
+
+{% if references %}
+<div class="references">
+    <h3>Case Studies Referenced</h3>
+    <div class="reference-grid">
+        {% for ref in references %}
+        <div class="reference-item">
+            <div class="reference-icon">📋</div>
+            <div class="reference-text">{{ ref }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="actions">
+    <a href="/" class="back-button">&larr; Ask another question</a>
+</div>
+{% endblock %}
