@@ -31,36 +31,44 @@
 
 <div class="example-questions">
     <h3>Example Questions</h3>
-    <div class="question-grid">
-        <div class="question-card" onclick="setQuery(this)">
-            <div class="question-icon">👥</div>
-            <p>How can I mobilize volunteers for my GivingTuesday campaign?</p>
-        </div>
-        <div class="question-card" onclick="setQuery(this)">
-            <div class="question-icon">📣</div>
-            <p>What storytelling techniques work best for GivingTuesday?</p>
-        </div>
-        <div class="question-card" onclick="setQuery(this)">
-            <div class="question-icon">📊</div>
-            <p>How can I measure the success of my GivingTuesday campaign?</p>
-        </div>
-        <div class="question-card" onclick="setQuery(this)">
-            <div class="question-icon">🏢</div>
-            <p>What's the best way to engage local businesses in my campaign?</p>
-        </div>
-    </div>
+    <div class="question-grid" id="questionGrid"></div>
     
     <script>
-        function setQuery(card) {
-            // Get the text from the card
-            const queryText = card.querySelector('p').textContent;
-            
+        // Define example questions as a list of objects
+        const exampleQuestions = [
+            {
+                icon: "👥",
+                text: "How can I mobilize volunteers for my GivingTuesday campaign?"
+            },
+            {
+                icon: "📣",
+                text: "What storytelling techniques work best for GivingTuesday?"
+            },
+            {
+                icon: "📊",
+                text: "How can I measure the success of my GivingTuesday campaign?"
+            },
+            {
+                icon: "🏢",
+                text: "What's the best way to engage local businesses in my campaign?"
+            },
+            {
+                icon: "🌐",
+                text: "How can I leverage social media for my GivingTuesday campaign?"
+            },
+            {
+                icon: "💰",
+                text: "What are effective fundraising strategies for small nonprofits?"
+            }
+        ];
+        
+        // Function to set query from clicked card
+        function setQuery(text) {
             // Set the text in the textarea
-            document.getElementById('query').value = queryText;
+            document.getElementById('query').value = text;
             
-            // Determine if we should auto-submit based on a URL parameter
-            const urlParams = new URLSearchParams(window.location.search);
-            const autoSubmit = urlParams.get('autoSubmit') === 'true';
+            // Determine if we should auto-submit based on localStorage
+            const autoSubmit = localStorage.getItem('autoSubmit') === 'true';
             
             if (autoSubmit) {
                 // Automatically submit the form
@@ -72,8 +80,28 @@
             }
         }
         
-        // Add a toggle for auto-submit option
+        // Generate cards from the list of questions
         document.addEventListener('DOMContentLoaded', function() {
+            const questionGrid = document.getElementById('questionGrid');
+            
+            // Create cards for each example question
+            exampleQuestions.forEach(question => {
+                const card = document.createElement('div');
+                card.className = 'question-card';
+                card.addEventListener('click', () => setQuery(question.text));
+                
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'question-icon';
+                iconDiv.textContent = question.icon;
+                
+                const textP = document.createElement('p');
+                textP.textContent = question.text;
+                
+                card.appendChild(iconDiv);
+                card.appendChild(textP);
+                questionGrid.appendChild(card);
+            });
+            
             // Create a checkbox for auto-submit
             const checkboxContainer = document.createElement('div');
             checkboxContainer.className = 'form-group checkbox-group';
@@ -87,19 +115,9 @@
             checkbox.id = 'auto_submit';
             checkbox.checked = localStorage.getItem('autoSubmit') === 'true';
             
-            // Update URL and localStorage when checkbox changes
+            // Update localStorage when checkbox changes
             checkbox.addEventListener('change', function() {
-                const autoSubmit = this.checked;
-                localStorage.setItem('autoSubmit', autoSubmit);
-                
-                // Update URL parameter without page reload
-                const url = new URL(window.location);
-                if (autoSubmit) {
-                    url.searchParams.set('autoSubmit', 'true');
-                } else {
-                    url.searchParams.delete('autoSubmit');
-                }
-                window.history.replaceState({}, '', url);
+                localStorage.setItem('autoSubmit', this.checked);
             });
             
             label.appendChild(checkbox);
@@ -110,13 +128,6 @@
             // Add the checkbox after the example questions heading
             const heading = document.querySelector('.example-questions h3');
             heading.parentNode.insertBefore(checkboxContainer, heading.nextSibling);
-            
-            // Set initial URL parameter
-            if (checkbox.checked) {
-                const url = new URL(window.location);
-                url.searchParams.set('autoSubmit', 'true');
-                window.history.replaceState({}, '', url);
-            }
         });
     </script>
 </div>
