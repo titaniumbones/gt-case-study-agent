@@ -41,3 +41,6 @@ env/
 vectordb/
 *.log
 logs/
+
+# frontend
+frontend/node_modules/

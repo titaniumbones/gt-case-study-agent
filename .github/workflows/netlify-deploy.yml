@@ -1,0 +1,26 @@
+# This workflow has been replaced by frontend-ci.yml and backend-ci.yml
+# It is kept here for reference but will be removed in a future update
+
+name: Legacy Deploy to Netlify (DEPRECATED)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Display deprecation notice
+        run: |
+          echo "This workflow is deprecated and will be removed."
+          echo "Please use the frontend-ci.yml and backend-ci.yml workflows instead."
+          exit 1
